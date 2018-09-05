@@ -75,7 +75,7 @@ bash .scripts/06-deploy-vault.sh
 
 ```bash
 kubectl -n vault exec -ti vault-0 -- sh
-VAULT_SKIP_VERIFY="true"
+export VAULT_SKIP_VERIFY="true"
 ```
 
 ### 07.1 Vault initialization
@@ -120,16 +120,85 @@ This step should be executed on worker node.
 ```bash
 SECRET_NAME="$(kubectl get serviceaccount vault-auth \
   -o go-template='{{ (index .secrets 0).name }}')"
+
+TR_ACCOUNT_TOKEN="$(kubectl get secret ${SECRET_NAME} \
+  -o go-template='{{ .data.token }}' | base64 --decode)"
+
+echo ${TR_ACCOUNT_TOKEN}
 ```
+
+#### 07.3.2 Enable and configure kubernetes auth
+This step should be executed in vault pod. Please use $TR_ACCOUNT_TOKEN from
+previous command as your 'token_reviewer_jwt'.
 
 ```bash
 vault login <Root Key>
 vault auth enable kubernetes
 vault write auth/kubernetes/config \
   kubernetes_host="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS}" \
-  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  token_reviewer_jwt=""
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+  token_reviewer_jwt="eyJhbGciOiJSUzI1NiI..."
 ```
 
-## 07 Setup Comms
+#### 07.3.3 Create test policy and secret
+First we are going to create a policy that allows read/write/delete from
+anything under "myapp" in the kv secrets engine. Next we will create a static
+credential at `secret/myapp/config` with a username and password.
 
+```bash
+vault policy write myapp-policy - <<EOH
+path "secret/myapp/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+EOH
+
+vault kv put secret/myapp/config \
+  ttl="60m" \
+  username="appuser" \
+  password="apppassword"
+```
+
+#### 07.3.4 Create app role
+In this step we are mapping an application or service in Kunbernetes to a series
+of policies in Vault. That way, when an application successfully authenticates
+to Vault via its JWT token, Vault knows which policies to assgin to the
+response.
+
+```bash
+vault write auth/kubernetes/role/myapp-role \
+  bound_service_account_names=vault-auth \
+  bound_service_account_namespaces=default,vault \
+  policies=default,myapp-policy \
+  ttl=60m
+```
+
+## 08 Run your app with Vault secrets
+In this example we will run simple curl test to get our secure credentials from
+Vault using Kubernetes service account we use for our pod.
+
+```bash
+kubectl run tmp --rm -ti --serviceaccount=vault-auth --image alpine
+```
+
+In the container run
+
+```bash
+apk add curl jq
+
+KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+VAULT_K8S_LOGIN=$(curl -k -X POST --data \
+  '{"jwt": "'"$KUBE_TOKEN"'", "role": "myapp-role"}' \
+  https://vault.vault.svc.cluster.local:443/v1/auth/kubernetes/login)
+
+X_VAULT_TOKEN=$(echo $VAULT_K8S_LOGIN | jq -r '.auth.client_token')
+```
+
+And finally
+
+```bash
+MYCREDS=$(curl -k --header "X-Vault-Token: $X_VAULT_TOKEN" \
+  https://vault.vault.svc.cluster.local:443/v1/secret/myapp/config)
+
+echo $MYCREDS | jq
+```
