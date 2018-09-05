@@ -27,22 +27,22 @@ spec:
             topologyKey: kubernetes.io/hostname
       terminationGracePeriodSeconds: 10
       containers:
-      - name: vault-init
-        image: registry.hub.docker.com/sethvargo/vault-init:0.1.1
-        imagePullPolicy: Always
-        env:
-        - name: CHECK_INTERVAL
-          value: "5"
-        - name: S3_BUCKET_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: vault
-              key: s3_bucket_name
-        - name: KMS_KEY_ID
-          valueFrom:
-            configMapKeyRef:
-              name: vault
-              key: kms_key_id
+#      - name: vault-init
+#        image: registry.hub.docker.com/sethvargo/vault-init:0.1.1
+#        imagePullPolicy: Always
+#        env:
+#        - name: CHECK_INTERVAL
+#          value: "5"
+#        - name: S3_BUCKET_NAME
+#          valueFrom:
+#            configMapKeyRef:
+#              name: vault
+#              key: s3_bucket_name
+#        - name: KMS_KEY_ID
+#          valueFrom:
+#            configMapKeyRef:
+#              name: vault
+#              key: kms_key_id
       - name: vault
         image: registry.hub.docker.com/library/vault:0.10.4
         imagePullPolicy: Always
