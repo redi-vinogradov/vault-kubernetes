@@ -71,5 +71,65 @@ service called 'vault'.
 bash .scripts/06-deploy-vault.sh
 ```
 
+## 07 Vault initialization and configure
+
+```bash
+kubectl -n vault exec -ti vault-0 -- sh
+VAULT_SKIP_VERIFY="true"
+```
+
+### 07.1 Vault initialization
+! Please be advised that unseal keys and root token from this command output
+should be stored in a safe place for future use. Loosing these keys can led to
+impossibility of unsealing the Vault.
+
+```bash
+vault operator init
+```
+
+### 07.2 Unsealing Vault
+In order to unsel the Vault we need to use 3 unseal keys from previous output.
+
+```bash
+vault operator unseal <Unseal Key 1>
+vault operator unseal <Unseal Key 2>
+vault operator unseal <Unseal Key 3>
+```
+
+Check if Vault is unsealed successfully:
+
+```bash
+vault status
+Key             Value
+---             -----
+Seal Type       shamir
+Sealed          false
+Total Shares    5
+Threshold       3
+Version         0.10.4
+...
+```
+
+### 07.3 Login to Vault and configure kubernetes auth
+In this step you need to use the root key from initialization output and vault-auth 
+service token.
+
+#### 07.3.1 Get vault-auth service token
+This step should be executed on worker node.
+
+```bash
+SECRET_NAME="$(kubectl get serviceaccount vault-auth \
+  -o go-template='{{ (index .secrets 0).name }}')"
+```
+
+```bash
+vault login <Root Key>
+vault auth enable kubernetes
+vault write auth/kubernetes/config \
+  kubernetes_host="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS}" \
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  token_reviewer_jwt=""
+```
+
 ## 07 Setup Comms
 

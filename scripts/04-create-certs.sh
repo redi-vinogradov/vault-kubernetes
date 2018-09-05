@@ -36,7 +36,8 @@ extendedKeyUsage     = clientAuth, serverAuth
 subjectAltName       = @alt_names
 
 [alt_names]
-DNS.1 = vault.default.svc.cluster.local
+IP.1 = 127.0.0.1
+DNS.1 = vault.vault.svc.cluster.local
 DNS.2 = vault.ss.rdti.us
 DNS.3 = ${LB_DNS_NAME}
 EOF
