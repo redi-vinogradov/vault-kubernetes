@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
 
-kubectl apply -f k8s/vault-namespace.sh
+kubectl apply -f k8s/vault-namespace.yaml

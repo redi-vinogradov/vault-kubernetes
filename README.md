@@ -25,17 +25,14 @@ bash ./scripts/01-setup-kms.sh
 ```
 
 ## 02 Create IAM Service Account
-If you are the first user in your project (as is the case with the dedicated
-projects for this workshop), you are a super user with full permission. It is a
-best practice to create a limited, dedicated service account that has only the
-required permissions. The `02-create-iam-service-account.sh` script creates a
-dedicated service account in the project and grants that service account the
-most minimal set of permissions, in particular:
+This exmaple presumes that your k8s cluster was created with KOPS and nodes are
+already using IAM role. In this step we will create new IAM policy and attach it
+to existing IAM role. The following permissions will be granted:
 
-- The ability to read/write to the AWS S3 bucket created above
+!! script has hardcoded ss.rdti.us
+
+- The ability to read/write to the AWS S3 Vault bucket
 - The ability to encrypt/decrypt data with the KMS key created above
-- The ability to generate new service accounts (not required to use Vault, but
-  helpful if you plan to use the Vault AWS secrets engine)
 
 ```text
 bash ./scripts/02-setup-iam-service-account.sh
@@ -50,15 +47,15 @@ bash ./scripts/03-create-namespace.sh
 ```
 
 ## 04 Create certificates
-
 We used 'ss.rdti.us' here and looking for AWS ALB 'k8s-ingress-ss'
+
+!! script has hardcoded ss.rdti.us
 
 ```text
 bash ./scripts/04-create-certs.sh
 ```
 
 ## 05 Setup config
-
 We use 'load_balancer_dns_name' instead of 'load_balancer_address' and
 's3_bucket_name' instead of 'gcs_bucket_name' (update vault-init).
 
