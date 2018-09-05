@@ -1,0 +1,51 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      serviceAccountName: vault-auth
+      initContainers:
+        - name: vault-init
+          image: alpine:latest
+          command:
+            - "sh"
+            - "-c"
+            - >
+              apk add curl jq
+              KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token);
+              curl -k -X POST --data '{"jwt": "'"$KUBE_TOKEN"'", "role": "myapp-role"}' https://vault.vault.svc.cluster.local:443/v1/auth/kubernetes/login | jq -j '.auth.client_token' > /etc/vault/token;
+              X_VAULT_TOKEN=$(cat /etc/vault/token);
+              curl -H "X-Vault-Token: $X_VAULT_TOKEN" https://vault.vault.svc.cluster.local:443/v1/secret/myapp/config > /etc/app/config.json;
+          volumeMounts:
+            - name: app-creds
+              mountPath: /etc/app
+            - name: vault-token
+              mountPath: /etc/vault
+      containers:
+        - name: rails
+          image: gmaliar/vault-dynamic-secrets-rails:0.0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              memory: "50Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: app-creds
+              mountPath: /etc/app
+            - name: vault-token
+              mountPath: /etc/vault
+      volumes:
+        - name: app-creds
+          emptyDir: {}
+        - name: vault-token
+          emptyDir: {}
