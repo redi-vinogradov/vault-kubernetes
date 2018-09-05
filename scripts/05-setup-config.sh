@@ -12,12 +12,12 @@ KMS_KEY="$(aws kms describe-key --key-id "alias/k8s/vault" --query 'KeyMetadata.
 
 DIR="$(pwd)/tls"
 
-kubectl create configmap vault \
+kubectl -n vault create configmap vault \
   --from-literal "load_balancer_dns_name=${LB_DNS_NAME}" \
   --from-literal "s3_bucket_name=${S3_BUCKET}" \
   --from-literal "kms_key_id=${KMS_KEY}"
 
-kubectl create secret generic vault-tls \
+kubectl -n vault create secret generic vault-tls \
   --from-file "${DIR}/ca.crt" \
   --from-file "vault.crt=${DIR}/vault-combined.crt" \
   --from-file "vault.key=${DIR}/vault.key"

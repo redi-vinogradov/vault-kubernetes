@@ -1,0 +1,17 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: vault
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  rules:
+  - host: vault.ss.rdti.us
+    http:
+      paths:
+      - backend:
+          serviceName: vault
+          servicePort: 443
+        path: /
