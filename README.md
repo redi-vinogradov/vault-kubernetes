@@ -142,8 +142,8 @@ vault write auth/kubernetes/config \
 
 #### 07.3.3 Create test policy and secret
 First we are going to create a policy that allows read/write/delete from
-anything under "myapp" in the kv secrets engine. Next we will create a static
-credential at `secret/myapp/config` with a username and password.
+anything under `demo` in the kv secrets engine. Next we will create a static
+credential at `secret/demo/config` with a username and password.
 
 ```bash
 vault policy write demo-policy - <<EOH
@@ -152,10 +152,9 @@ path "secret/demo/*" {
 }
 EOH
 
-vault kv put secret/myapp/config \
-  ttl="60m" \
-  username="appuser" \
-  password="apppassword"
+vault kv put secret/demo/config \
+  username="demouser" \
+  password="demopassword"
 ```
 
 #### 07.3.4 Create app role
@@ -165,40 +164,24 @@ to Vault via its JWT token, Vault knows which policies to assgin to the
 response.
 
 ```bash
-vault write auth/kubernetes/role/myapp-role \
+vault write auth/kubernetes/role/demo-role \
   bound_service_account_names=vault-tokenreview \
   bound_service_account_namespaces=default \
   policies=demo-policy \
   ttl=60m
 ```
 
-## 08 Run your app with Vault secrets
-In this example we will run simple curl test to get our secure credentials from
-Vault using Kubernetes service account we use for our pod.
+## 08 Run demo app with Vault secrets
+In this example we will deploy our demo application with vault-init container which
+will get our secrets from Vault and store them in `/env/variables`.
 
 ```bash
-kubectl run tmp --rm -ti --serviceaccount=vault-tokenreview --image alpine
+bash ./scripts/07-demo-app.sh
 ```
 
-In the container run
+This demo app will print to STDOUT it's username/password and exit so we can check
+this status by running:
 
 ```bash
-apk add curl jq
-
-KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-
-VAULT_K8S_LOGIN=$(curl -k -X POST --data \
-  '{"jwt": "'"$KUBE_TOKEN"'", "role": "myapp-role"}' \
-  https://vault.vault.svc.cluster.local:443/v1/auth/kubernetes/login)
-
-X_VAULT_TOKEN=$(echo $VAULT_K8S_LOGIN | jq -r '.auth.client_token')
-```
-
-And finally
-
-```bash
-MYCREDS=$(curl -k --header "X-Vault-Token: $X_VAULT_TOKEN" \
-  https://vault.vault.svc.cluster.local:443/v1/secret/myapp/config)
-
-echo $MYCREDS | jq
+kubectl logs $(kubectl get pods|grep demo-app|awk '{print $1}')
 ```

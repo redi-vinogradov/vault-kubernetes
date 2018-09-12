@@ -1,0 +1,39 @@
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: demo-app
+spec:
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      serviceAccountName: vault-tokenreview
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      initContainers:
+      - name: vault-init
+        image: docker-registry.rdti.com/com.redi.devops/vault-init:0.1.1
+        env:
+        - name: KUBERNETES_AUTH_PATH
+          value: "kubernetes"
+        - name: VAULT_ADDR
+          value: "https://vault.vault"
+        - name: VAULT_LOGIN_ROLE
+          value: "demo-role"
+        - name: SECRET_DEMOAPP_USERNAME
+          value: "secret/demo/config?username"
+        - name: SECRET_DEMOAPP_PASSWORD
+          value: "secret/demo/config?password"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /env
+      containers:
+      - name: demo-app
+        image: docker-registry.rdti.com/com.redi.devops/demo-app:0.0.1
+        command: ["/bin/sh", "-c", "source /env/variables; ./demo-app.sh"]
+        volumeMounts:
+        - name: shared-data
+          mountPath: /env
