@@ -184,4 +184,7 @@ this status by running:
 
 ```bash
 kubectl logs $(kubectl get pods|grep demo-app|awk '{print $1}')
+
+DEMOAPP_USERNAME=demouser
+DEMOAPP_PASSWORD=demopassword
 ```
