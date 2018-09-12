@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-kubectl create serviceaccount vault-auth
+kubectl apply -f - <<EOH
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-tokenreview
+EOH
 kubectl apply -f - <<EOH
 ---
 apiVersion: v1
@@ -15,13 +21,13 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: role-tokenreview-binding
-  namespace: vault
+  namespace: default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: system:auth-delegator
 subjects:
 - kind: ServiceAccount
-  name: vault-auth
+  name: vault-tokenreview
   namespace: vault
 EOH

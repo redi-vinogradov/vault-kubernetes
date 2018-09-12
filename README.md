@@ -111,18 +111,18 @@ Version         0.10.4
 ```
 
 ### 07.3 Login to Vault and configure kubernetes auth
-In this step you need to use the root key from initialization output and vault-auth 
-service token.
+In this step you need to use the root key from initialization output and
+vault-tokenreview service token.
 
-#### 07.3.1 Get vault-auth service token
+#### 07.3.1 Get vault-tokenreview service token
 This step should be executed on worker node.
 
 ```bash
-SECRET_NAME="$(kubectl get serviceaccount vault-auth \
-  -o go-template='{{ (index .secrets 0).name }}')"
+SECRET_NAME=$(kubectl -n default get serviceaccount vault-tokenreview \
+-o jsonpath='{.secrets[0].name}')
 
-TR_ACCOUNT_TOKEN="$(kubectl get secret ${SECRET_NAME} \
-  -o go-template='{{ .data.token }}' | base64 --decode)"
+TR_ACCOUNT_TOKEN=$(kubectl -n default get secret ${SECRET_NAME} \
+-o jsonpath='{.data.token}' | base64 --decode)
 
 echo ${TR_ACCOUNT_TOKEN}
 ```
@@ -146,8 +146,8 @@ anything under "myapp" in the kv secrets engine. Next we will create a static
 credential at `secret/myapp/config` with a username and password.
 
 ```bash
-vault policy write myapp-policy - <<EOH
-path "secret/myapp/*" {
+vault policy write demo-policy - <<EOH
+path "secret/demo/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 EOH
@@ -166,9 +166,9 @@ response.
 
 ```bash
 vault write auth/kubernetes/role/myapp-role \
-  bound_service_account_names=vault-auth \
-  bound_service_account_namespaces=default,vault \
-  policies=default,myapp-policy \
+  bound_service_account_names=vault-tokenreview \
+  bound_service_account_namespaces=default \
+  policies=demo-policy \
   ttl=60m
 ```
 
@@ -177,7 +177,7 @@ In this example we will run simple curl test to get our secure credentials from
 Vault using Kubernetes service account we use for our pod.
 
 ```bash
-kubectl run tmp --rm -ti --serviceaccount=vault-auth --image alpine
+kubectl run tmp --rm -ti --serviceaccount=vault-tokenreview --image alpine
 ```
 
 In the container run

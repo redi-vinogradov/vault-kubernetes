@@ -11,7 +11,7 @@ spec:
       labels:
         app: myapp
     spec:
-      serviceAccountName: vault-auth
+      serviceAccountName: vault-tokenreview
       initContainers:
         - name: vault-init
           image: alpine:latest
